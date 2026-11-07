@@ -1,23 +1,13 @@
 {
   "name": "fix-my-san-diego",
   "version": "1.0.0",
-  "description": "AI-powered civic infrastructure issue tagger for San Diego using Gemini 3.8 Flash Vision.",
+  "description": "AI-powered civic infrastructure issue tagger for San Diego using Google Gemini vision.",
   "main": "index.html",
   "scripts": {
     "start": "npx serve .",
-    "dev": "npx serve ."
+    "dev": "npx vercel dev"
   },
-  "keywords": [
-    "san-diego",
-    "civic-tech",
-    "gemini-ai",
-    "open311",
-    "leaflet",
-    "vercel"
-  ],
+  "keywords": ["san-diego", "civic-tech", "gemini-ai", "open311", "leaflet", "vercel"],
   "author": "FixMySanDiego Team",
-  "license": "MIT",
-  "devDependencies": {
-    "serve": "^14.2.1"
-  }
+  "license": "MIT"
 }

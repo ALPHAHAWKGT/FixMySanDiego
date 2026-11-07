@@ -1,32 +1,23 @@
-# 🌊 FixMySanDiego — AI-Powered Civic Infrastructure Audit Engine
+# FixMySanDiego
 
-> Transforming crowdsourced municipal hazard reports into structured, prioritized public works data using Google Gemini 3.8 Flash Vision AI.
+AI-powered civic infrastructure issue tagger for San Diego. Upload a photo of a hazard and Google Gemini checks that it is real public infrastructure, scores urgency, estimates repair cost and time, and plots it on a map. Reports within 30 meters of each other are merged.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![AI Model](https://img.shields.io/badge/AI-Gemini%203.8%20Flash-orange)
-![Deployment](https://img.shields.io/badge/Deploy-Vercel-black)
-![Region](https://img.shields.io/badge/Built%20For-San%20Diego-0284c7)
+## Project structure
 
----
+```
+index.html        # frontend (Leaflet map + report form)
+api/analyze.js    # Vercel serverless function that calls Gemini
+package.json
+.gitignore
+```
 
-## 📌 Overview
+## Deploy on Vercel
 
-**FixMySanDiego** simplifies public hazard reporting to a single photo upload. Powered by **Google Gemini AI**, the application analyzes images, flags invalid/troll submissions, estimates repair backlogs, and outputs structured Open311-compatible dispatch records.
+1. Push this repo to GitHub.
+2. Import it at vercel.com.
+3. In Project Settings > Environment Variables, add `GEMINI_API_KEY` with your key from https://aistudio.google.com/apikey. Optionally add `GEMINI_MODEL` to pick a specific model.
+4. Redeploy, then open the `*.vercel.app` URL.
 
-## 🛠 Features
+## Security
 
-* 📸 **Photo Audit & Gatekeeper:** AI auto-checks for valid public infrastructure hazards.
-* 📍 **Geospatial Deduplication:** Automatically merges reports within a 30-meter radius.
-* 🗺️ **Interactive Leaflet Dashboard:** Urgent pin clustering and live repair backlog tracking.
-* 🔒 **Secure Vercel Backend:** API key executed strictly via serverless functions.
-
----
-
-## 🚀 Deployment on Vercel
-
-1. Extract this ZIP archive and push the repository to GitHub.
-2. Import the project into [Vercel](https://vercel.com).
-3. In your Vercel Project Settings under **Environment Variables**, add:
-   * **Key:** `GEMINI_API_KEY`
-   * **Value:** `AQ.Ab8RN6J2-vtxFZdnLMPD1h6Kp9iqEIcNRswOPXz6kNK1L-lWzQ`
-4. Deploy! Vercel will host the frontend and serve `/api/analyze` automatically.
+**Never write your API key in any file in this repo (including this README).** Google scans public GitHub repos and disables any key it finds. The key belongs only in Vercel's environment variables.
