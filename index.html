@@ -1,945 +1,681 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FixMySanDiego - AI-Powered Civic Issue Tagger</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-    <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        sdBlue: {
-                            50: '#f0f7ff',
-                            100: '#e0effe',
-                            500: '#0284c7',
-                            700: '#0369a1',
-                            900: '#0c4a6e',
-                        },
-                        urgencyRed: '#ef4444',
-                        urgencyAmber: '#f59e0b',
-                        urgencyGreen: '#10b981',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        #map {
-            height: 100%;
-            width: 100%;
-            z-index: 1;
-        }
-        .custom-popup .leaflet-popup-content-wrapper {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 0;
-            overflow: hidden;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
-        }
-        .custom-popup .leaflet-popup-content {
-            margin: 0;
-            width: 280px !important;
-        }
-        .pulse-red {
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-            animation: pulse-red 2s infinite;
-        }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FixMySanDiego | AI-Powered Civic Infrastructure Audit</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    #map { height: calc(100vh - 80px); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+  </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden">
 
-    <!-- Top Navigation Header -->
-    <header class="bg-slate-950 border-b border-slate-800 shrink-0 px-4 py-3 z-30">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="bg-gradient-to-tr from-sky-500 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-sky-500/20 text-white">
-                    <i class="fa-solid font-bold fa-triangle-exclamation text-xl"></i>
-                </div>
-                <div>
-                    <div class="flex items-center space-x-2">
-                        <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-400 bg-clip-text text-transparent">FixMySanDiego</h1>
-                        <span class="px-2 py-0.5 text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full hidden sm:inline-block">AI Civic Audit</span>
-                    </div>
-                    <p class="text-xs text-slate-400 flex items-center gap-1.5">
-                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        SD Public Works Dispatch Stream
-                    </p>
-                </div>
-            </div>
-
-            <!-- Stats Header Banner (Desktop) -->
-            <div class="hidden lg:flex items-center space-x-6 text-xs bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-xl">
-                <div>
-                    <span class="text-slate-400 block">Total Active Issues</span>
-                    <span id="stat-total-issues" class="text-sm font-bold text-white">--</span>
-                </div>
-                <div class="h-6 w-px bg-slate-800"></div>
-                <div>
-                    <span class="text-slate-400 block">Est. Repair Backlog</span>
-                    <span id="stat-total-cost" class="text-sm font-bold text-sky-400">$0</span>
-                </div>
-                <div class="h-6 w-px bg-slate-800"></div>
-                <div>
-                    <span class="text-slate-400 block">Critical Hazards (8+)</span>
-                    <span id="stat-critical-count" class="text-sm font-bold text-rose-400">0</span>
-                </div>
-            </div>
-
-            <!-- Header Actions -->
-            <div class="flex items-center space-x-2">
-                <button onclick="toggleDispatchModal()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition flex items-center gap-2">
-                    <i class="fa-solid fa-file-export text-sky-400"></i>
-                    <span class="hidden md:inline">City Dispatch API</span>
-                </button>
-                <button onclick="openReportModal()" class="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-lg shadow-lg shadow-sky-500/25 transition flex items-center gap-2">
-                    <i class="fa-solid fa-plus text-sm"></i>
-                    <span>Report Hazard</span>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content Body (Map + Sidebar Split) -->
-    <div class="flex-1 flex flex-col md:flex-row relative overflow-hidden">
-
-        <!-- Sidebar / Drawer -->
-        <aside class="w-full md:w-96 bg-slate-950 border-r border-slate-800 flex flex-col z-20 h-1/2 md:h-full shrink-0">
-            <!-- Filter & Search Controls -->
-            <div class="p-3 border-b border-slate-800 bg-slate-900/50 space-y-2">
-                <div class="flex items-center gap-2">
-                    <div class="relative flex-1">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-                        <input type="text" id="search-input" placeholder="Search neighborhood or issue..." 
-                            class="w-full pl-8 pr-3 py-1.5 bg-slate-800/80 border border-slate-700/70 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-sky-500 placeholder-slate-500">
-                    </div>
-                    <select id="filter-urgency" onchange="applyFilters()" class="bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-200 px-2 py-1.5 focus:outline-none focus:border-sky-500">
-                        <option value="all">All Urgency</option>
-                        <option value="critical">🔴 Critical (8-10)</option>
-                        <option value="high">🟡 Moderate (5-7)</option>
-                        <option value="low">🟢 Minor (1-4)</option>
-                    </select>
-                </div>
-                
-                <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-                    <div class="flex gap-1 overflow-x-auto no-scrollbar py-0.5">
-                        <button onclick="setSort('urgency')" id="sort-urgency" class="px-2.5 py-1 rounded-md bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[11px] font-medium shrink-0">
-                            Highest Urgency
-                        </button>
-                        <button onclick="setSort('votes')" id="sort-votes" class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-medium shrink-0">
-                            Most Upvoted
-                        </button>
-                        <button onclick="setSort('recent')" id="sort-recent" class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-medium shrink-0">
-                            Recent
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Mobile Quick Stats Bar -->
-            <div class="lg:hidden flex items-center justify-around bg-slate-900 px-3 py-2 border-b border-slate-800 text-center text-xs">
-                <div>
-                    <span class="text-slate-400 text-[10px] block">Reports</span>
-                    <span id="stat-mobile-reports" class="font-bold text-white">--</span>
-                </div>
-                <div class="h-4 w-px bg-slate-800"></div>
-                <div>
-                    <span class="text-slate-400 text-[10px] block">Est. Cost</span>
-                    <span id="stat-mobile-cost" class="font-bold text-sky-400">$0</span>
-                </div>
-                <div class="h-4 w-px bg-slate-800"></div>
-                <div>
-                    <span class="text-slate-400 text-[10px] block">Critical</span>
-                    <span id="stat-mobile-critical" class="font-bold text-rose-400">0</span>
-                </div>
-            </div>
-
-            <!-- Issue Feed List -->
-            <div id="issue-list" class="flex-1 overflow-y-auto p-3 space-y-3 divide-y divide-slate-800/40">
-                <!-- Dynamic Items Inserted Here -->
-            </div>
-        </aside>
-
-        <!-- Map Container -->
-        <main class="flex-1 relative h-1/2 md:h-full">
-            <div id="map"></div>
-
-            <!-- Map Overlay Quick Legend -->
-            <div class="absolute bottom-6 right-6 z-[400] bg-slate-950/90 backdrop-blur border border-slate-800 p-3 rounded-xl shadow-2xl text-xs space-y-1.5 hidden sm:block">
-                <span class="text-slate-400 font-semibold block text-[11px] uppercase tracking-wider mb-1">Severity Legend</span>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-                    <span class="text-slate-200">Critical / Emergency (8-10)</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span class="text-slate-200">Moderate Hazard (5-7)</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span class="text-slate-200">Minor Maintenance (1-4)</span>
-                </div>
-            </div>
-
-            <!-- Mobile View Mode Floating Switcher -->
-            <div class="md:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-[400] bg-slate-950/90 border border-slate-800 p-1 rounded-full shadow-2xl flex items-center gap-1 text-xs">
-                <button onclick="toggleMobileView('map')" id="btn-mobile-map" class="px-4 py-1.5 rounded-full bg-sky-500 text-slate-950 font-bold">Map</button>
-                <button onclick="toggleMobileView('list')" id="btn-mobile-list" class="px-4 py-1.5 rounded-full text-slate-300 font-medium">List</button>
-            </div>
-        </main>
+  <!-- Header Navigation -->
+  <header class="h-20 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between z-20 relative">
+    <div class="flex items-center space-x-3">
+      <div class="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
+        <i data-lucide="shield-alert" class="w-6 h-6 text-white"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+          FixMySanDiego 
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">AI Civic Audit</span>
+        </h1>
+        <p class="text-xs text-slate-400">San Diego Public Works Dispatch Stream</p>
+      </div>
     </div>
 
-    <!-- REPORT NEW HAZARD MODAL -->
-    <div id="report-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
-            
-            <!-- Modal Header -->
-            <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-                <div class="flex items-center gap-2.5">
-                    <div class="p-2 bg-sky-500/10 text-sky-400 rounded-lg">
-                        <i class="fa-solid fa-camera font-bold"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-white text-base">Report Civic Infrastructure Hazard</h3>
-                        <p class="text-xs text-slate-400">San Diego Public Works AI Intake System</p>
-                    </div>
-                </div>
-                <button onclick="closeReportModal()" class="text-slate-400 hover:text-white p-2 rounded-lg">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <!-- Modal Form Body -->
-            <div class="p-5 overflow-y-auto space-y-4 flex-1 text-xs">
-
-                <!-- Gemini API Key Input (Collapsible) -->
-                <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3 space-y-2">
-                    <div class="flex items-center justify-between cursor-pointer" onclick="toggleApiKeyInput()">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-key text-sky-400"></i>
-                            <span class="font-semibold text-slate-200">Gemini 1.5 Flash API Key</span>
-                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">Optional</span>
-                        </div>
-                        <i id="api-key-chevron" class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform"></i>
-                    </div>
-                    <div id="api-key-wrapper" class="hidden pt-2 border-t border-slate-800/80 space-y-1">
-                        <input type="password" id="gemini-api-key" placeholder="AIzaSy... (Leave empty for instant demo AI simulation)" 
-                            class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-sky-500 text-xs">
-                        <p class="text-[10px] text-slate-400">If left empty, our client-side Smart Simulation Engine will analyze your image automatically for demo purposes.</p>
-                    </div>
-                </div>
-
-                <!-- Step 1: Image Capture / Select Preset -->
-                <div class="space-y-2">
-                    <label class="font-semibold text-slate-200 block">1. Take Photo or Upload Hazard Image</label>
-                    <div class="border-2 border-dashed border-slate-700 hover:border-sky-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-950/30 relative" id="drop-zone">
-                        <input type="file" accept="image/*" capture="environment" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
-                        <div id="upload-placeholder" class="space-y-1">
-                            <i class="fa-solid fa-cloud-arrow-up text-2xl text-sky-400 mb-1"></i>
-                            <p class="font-medium text-slate-200">Tap to capture photo or drop file</p>
-                            <p class="text-slate-500 text-[11px]">Supports JPG, PNG, WEBP</p>
-                        </div>
-                        <div id="image-preview-wrapper" class="hidden relative">
-                            <img id="image-preview" class="max-h-48 mx-auto rounded-lg object-cover border border-slate-700">
-                            <button onclick="resetImage(event)" class="absolute top-2 right-2 bg-slate-950/80 text-rose-400 p-1.5 rounded-full hover:bg-slate-900">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Preset Quick Buttons for Fast Demoing -->
-                <div class="space-y-1.5">
-                    <span class="text-slate-400 font-medium text-[11px] block">⚡ Quick Demo Presets (Auto-populates image & location):</span>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" onclick="loadPreset('hydrant')" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 transition">
-                            <span class="text-lg">🚰</span>
-                            <div>
-                                <div class="font-semibold text-slate-200">Burst Fire Hydrant</div>
-                                <div class="text-[10px] text-rose-400 font-medium">Critical Emergency (Urgency 10)</div>
-                            </div>
-                        </button>
-                        <button type="button" onclick="loadPreset('sinkhole')" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 transition">
-                            <span class="text-lg">🕳️</span>
-                            <div>
-                                <div class="font-semibold text-slate-200">Deep Street Sinkhole</div>
-                                <div class="text-[10px] text-rose-400 font-medium">Major Risk (Urgency 9)</div>
-                            </div>
-                        </button>
-                        <button type="button" onclick="loadPreset('sidewalk')" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 transition">
-                            <span class="text-lg">🚶</span>
-                            <div>
-                                <div class="font-semibold text-slate-200">Raised Sidewalk Trip</div>
-                                <div class="text-[10px] text-amber-400 font-medium">Moderate Risk (Urgency 6)</div>
-                            </div>
-                        </button>
-                        <button type="button" onclick="loadPreset('pothole')" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 transition">
-                            <span class="text-lg">🚗</span>
-                            <div>
-                                <div class="font-semibold text-slate-200">Gaslamp Quarter Pothole</div>
-                                <div class="text-[10px] text-amber-400 font-medium">Moderate Risk (Urgency 5)</div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Step 2: Location Selector -->
-                <div class="space-y-2 pt-2 border-t border-slate-800">
-                    <label class="font-semibold text-slate-200 block">2. Confirm Location</label>
-                    <div class="flex gap-2">
-                        <div class="relative flex-1">
-                            <input type="text" id="location-input" placeholder="Address or Neighborhood (e.g. Gaslamp Quarter)" 
-                                value="Gaslamp Quarter, San Diego, CA"
-                                class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-sky-500">
-                        </div>
-                        <button type="button" onclick="detectGPS()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 font-medium rounded-lg shrink-0 flex items-center gap-1.5">
-                            <i class="fa-solid fa-location-crosshairs"></i>
-                            <span>Detect GPS</span>
-                        </button>
-                    </div>
-                    <div class="flex gap-2 text-[11px] text-slate-400">
-                        <span>Coordinates:</span>
-                        <span id="coords-display" class="font-mono text-slate-300">32.7115, -117.1599</span>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="px-5 py-3 border-t border-slate-800 bg-slate-950 flex items-center justify-end gap-3">
-                <button type="button" onclick="closeReportModal()" class="px-4 py-2 text-slate-400 hover:text-white font-medium">Cancel</button>
-                <button type="button" id="btn-submit-report" onclick="processAndSubmitReport()" class="px-5 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-sky-500/20 flex items-center gap-2 transition">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    <span>Analyze with Gemini AI & Publish</span>
-                </button>
-            </div>
-        </div>
+    <!-- Live Stats Bar -->
+    <div class="hidden md:flex items-center space-x-8 bg-slate-950/60 border border-slate-800 px-5 py-2 rounded-xl">
+      <div>
+        <p class="text-[10px] uppercase font-bold tracking-wider text-slate-500">Active Issues</p>
+        <p class="text-lg font-extrabold text-white" id="stat-count">5</p>
+      </div>
+      <div class="h-8 w-px bg-slate-800"></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold tracking-wider text-slate-500">Est. Repair Backlog</p>
+        <p class="text-lg font-extrabold text-emerald-400" id="stat-cost">$41,500</p>
+      </div>
+      <div class="h-8 w-px bg-slate-800"></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold tracking-wider text-slate-500">Critical Hazards (8+)</p>
+        <p class="text-lg font-extrabold text-red-400" id="stat-critical">3</p>
+      </div>
     </div>
 
-    <!-- DISPATCH / CITY EXPORT MODAL -->
-    <div id="dispatch-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-server text-sky-400"></i>
-                    <h3 class="font-bold text-white text-base">City of San Diego 311 Open API Stream</h3>
-                </div>
-                <button onclick="toggleDispatchModal()" class="text-slate-400 hover:text-white">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <p class="text-xs text-slate-400">This JSON feed represents structured civic dispatch data ready to integrate directly into San Diego's <em>Get It Done</em> municipal backend.</p>
-            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 max-h-80 overflow-y-auto">
-                <pre id="json-dispatch-preview" class="text-[11px] font-mono text-emerald-400 whitespace-pre-wrap"></pre>
-            </div>
-            <div class="flex justify-end gap-2 text-xs">
-                <button onclick="copyDispatchJSON()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg border border-slate-700 flex items-center gap-2">
-                    <i class="fa-solid fa-copy"></i>
-                    <span>Copy JSON Payload</span>
-                </button>
-                <button onclick="toggleDispatchModal()" class="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-lg">Close</button>
-            </div>
-        </div>
+    <div class="flex items-center space-x-3">
+      <button onclick="toggleDispatchModal()" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-medium transition border border-slate-700">
+        <i data-lucide="code-2" class="w-4 h-4 text-blue-400"></i>
+        <span>City Dispatch API</span>
+      </button>
+      <button onclick="openReportModal()" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition shadow-lg shadow-blue-600/30">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+        <span>Report Hazard</span>
+      </button>
     </div>
+  </header>
 
-    <!-- AI Loading Overlay -->
-    <div id="ai-loading-overlay" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[60] hidden flex flex-col items-center justify-center space-y-4">
+  <!-- Main Content Layout -->
+  <div class="flex h-[calc(100vh-80px)] w-full">
+    
+    <!-- Sidebar: Issue Feed -->
+    <aside class="w-full md:w-96 bg-slate-900 border-r border-slate-800 flex flex-col z-10">
+      
+      <!-- API Key Toggle Drawer -->
+      <div class="bg-slate-950/80 p-3 border-b border-slate-800">
+        <button onclick="toggleApiKeyInput()" class="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center justify-between w-full">
+          <span class="flex items-center gap-1.5">
+            <i data-lucide="key" class="w-3.5 h-3.5"></i>
+            <span>Gemini API Key Configuration</span>
+          </span>
+          <i data-lucide="chevron-down" id="key-arrow" class="w-3.5 h-3.5 transition-transform"></i>
+        </button>
+        <div id="key-input-container" class="hidden mt-2">
+          <input type="password" id="gemini-api-key" placeholder="Paste Gemini API Key..." class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+          <p class="text-[10px] text-slate-500 mt-1">If empty, submission uses live rule simulation mode.</p>
+        </div>
+      </div>
+
+      <!-- Feed Controls -->
+      <div class="p-4 border-b border-slate-800 space-y-3">
         <div class="relative">
-            <div class="w-16 h-16 border-4 border-sky-500/20 border-t-sky-500 rounded-full animate-spin"></div>
-            <i class="fa-solid fa-brain absolute inset-0 m-auto text-sky-400 text-xl flex items-center justify-center"></i>
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-500"></i>
+          <input type="text" id="search-input" onkeyup="filterFeed()" placeholder="Search neighborhood or issue..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
         </div>
-        <div class="text-center space-y-1">
-            <h4 class="font-bold text-white text-base">Gemini 1.5 Flash Vision Audit in Progress...</h4>
-            <p id="ai-loading-status" class="text-xs text-sky-400 font-mono">Analyzing structural severity, estimated repair cost & labor hours...</p>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400 font-medium">Filter by Urgency:</span>
+          <select id="urgency-filter" onchange="filterFeed()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-300 focus:outline-none focus:border-blue-500">
+            <option value="all">All Urgency</option>
+            <option value="critical">Critical (8-10)</option>
+            <option value="moderate">Moderate (5-7)</option>
+            <option value="minor">Minor (1-4)</option>
+          </select>
         </div>
+      </div>
+
+      <!-- Incident Cards Feed -->
+      <div id="feed-container" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        <!-- Dynamically Rendered Cards -->
+      </div>
+    </aside>
+
+    <!-- Map Container -->
+    <main class="flex-1 relative">
+      <div id="map"></div>
+      
+      <!-- Severity Map Legend -->
+      <div class="absolute bottom-6 right-6 bg-slate-900/90 backdrop-blur-md border border-slate-800 p-4 rounded-xl shadow-2xl z-[1000] text-xs space-y-2">
+        <p class="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Severity Legend</p>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+          <span class="text-slate-300">Critical / Emergency (8-10)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+          <span class="text-slate-300">Moderate Hazard (5-7)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+          <span class="text-slate-300">Minor Maintenance (1-4)</span>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Modal: Report New Hazard -->
+  <div id="report-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5 relative">
+      <button onclick="closeReportModal()" class="absolute right-4 top-4 text-slate-500 hover:text-slate-300">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      
+      <div>
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="camera" class="w-5 h-5 text-blue-400"></i>
+          Report Civic Hazard
+        </h2>
+        <p class="text-xs text-slate-400 mt-1">AI automatically checks for spam, deduplicates nearby reports, and audits severity.</p>
+      </div>
+
+      <!-- Quick Preset Buttons for Failure-proof Demo -->
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">⚡ Quick Demo Presets (Instant Upload)</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="loadPreset('water')" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg p-2 text-left text-xs font-medium transition">
+            🌊 Burst Pipe (Water Main)
+          </button>
+          <button type="button" onclick="loadPreset('sinkhole')" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg p-2 text-left text-xs font-medium transition">
+            🕳️ Deep Asphalt Sinkhole
+          </button>
+          <button type="button" onclick="loadPreset('troll')" class="bg-red-950/40 hover:bg-red-900/40 text-red-300 border border-red-900/50 rounded-lg p-2 text-left text-xs font-medium transition">
+            🤡 Meme Upload (Test Rejection)
+          </button>
+          <button type="button" onclick="loadPreset('duplicate')" class="bg-amber-950/40 hover:bg-amber-900/40 text-amber-300 border border-amber-900/50 rounded-lg p-2 text-left text-xs font-medium transition">
+            🔄 Duplicate Water Main (Test Deduplication)
+          </button>
+        </div>
+      </div>
+
+      <form id="report-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Hazard Photo</label>
+          <input type="file" id="image-input" accept="image/*" capture="environment" onchange="previewImage(event)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-slate-300 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
+        </div>
+
+        <div id="image-preview-container" class="hidden h-36 w-full rounded-xl overflow-hidden border border-slate-800 relative bg-slate-950">
+          <img id="image-preview" src="" class="w-full h-full object-cover">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Latitude</label>
+            <input type="number" step="any" id="lat-input" required value="32.7157" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Longitude</label>
+            <input type="number" step="any" id="lng-input" required value="-117.1611" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200">
+          </div>
+        </div>
+
+        <button type="button" onclick="getCurrentLocation()" class="text-xs text-blue-400 flex items-center gap-1 hover:underline">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Use current device GPS
+        </button>
+
+        <button type="submit" id="submit-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30">
+          <span>Run Gemini Vision Audit & Publish</span>
+        </button>
+      </form>
     </div>
+  </div>
 
-    <script>
-        let map;
-        let markers = {};
-        let currentSort = 'urgency';
-        let currentFilter = 'all';
-        let currentLat = 32.7115;
-        let currentLng = -117.1599;
-        let selectedBase64Image = null;
+  <!-- Modal: City Dispatch JSON Output -->
+  <div id="dispatch-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl p-6 shadow-2xl space-y-4 relative">
+      <button onclick="toggleDispatchModal()" class="absolute right-4 top-4 text-slate-500 hover:text-slate-300">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
 
-        let issues = [
-            {
-                id: 'sd-101',
-                title: 'Water Main Burst & Road Washout',
-                neighborhood: 'Ocean Beach (Sunset Cliffs Blvd)',
-                lat: 32.7312,
-                lng: -117.2530,
-                urgency: 10,
-                cost: 24500,
-                hours: 36,
-                votes: 42,
-                timestamp: Date.now() - 3600000 * 2,
-                description: 'Severe water main blowout creating street erosion and flooding sidewalk near pedestrian pathway.',
-                action: 'Shut off main supply immediately, deploy road barrier, repair sub-base.',
-                image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=600&q=80',
-                reportedBy: 'Citizen Scout #402'
-            },
-            {
-                id: 'sd-102',
-                title: 'Deep Asphalt Sinkhole & Tire Hazard',
-                neighborhood: 'Gaslamp Quarter (5th Ave & Market)',
-                lat: 32.7115,
-                lng: -117.1599,
-                urgency: 8,
-                cost: 8500,
-                hours: 14,
-                votes: 29,
-                timestamp: Date.now() - 3600000 * 5,
-                description: 'Collapsing asphalt 14 inches deep across bus lane. Immediate threat to vehicles and bicyclists.',
-                action: 'Cold-patch temporarily; schedule asphalt saw-cut and compaction.',
-                image: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80',
-                reportedBy: 'Downtown Resident'
-            },
-            {
-                id: 'sd-103',
-                title: 'Raised Sidewalk Slab (ADA Trip Hazard)',
-                neighborhood: 'North Park (30th & University)',
-                lat: 32.7481,
-                lng: -117.1296,
-                urgency: 6,
-                cost: 3200,
-                hours: 8,
-                votes: 18,
-                timestamp: Date.now() - 3600000 * 12,
-                description: 'Tree root lift caused 3.5-inch vertical offset on concrete walkway near dining parklet.',
-                action: 'Grind down edge transition or shave slab for temporary ADA compliance.',
-                image: 'https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&w=600&q=80',
-                reportedBy: 'Pedestrian Safety Board'
-            },
-            {
-                id: 'sd-104',
-                title: 'Fallen Pedestrian Signal Head',
-                neighborhood: 'Pacific Beach (Garnet Ave)',
-                lat: 32.7985,
-                lng: -117.2361,
-                urgency: 9,
-                cost: 4100,
-                hours: 6,
-                votes: 35,
-                timestamp: Date.now() - 3600000 * 8,
-                description: 'Traffic light crosswalk housing hanging by exposed wiring after wind gust.',
-                action: 'Dispatch electrical crew to de-energize and secure housing arm.',
-                image: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=600&q=80',
-                reportedBy: 'MTS Transit Rider'
-            },
-            {
-                id: 'sd-105',
-                title: 'Historic Streetlamp Wiring Exposed',
-                neighborhood: 'Balboa Park (El Prado Promenade)',
-                lat: 32.7314,
-                lng: -117.1510,
-                urgency: 7,
-                cost: 1800,
-                hours: 4,
-                votes: 14,
-                timestamp: Date.now() - 3600000 * 20,
-                description: 'Access panel missing on base of ornamental light post with exposed wiring at toddler height.',
-                action: 'Cap exposed wire leads and bolt replacement cover plate.',
-                image: 'https://images.unsplash.com/photo-1548625361-1858c42a2253?auto=format&fit=crop&w=600&q=80',
-                reportedBy: 'Park Visitor'
-            },
-            {
-                id: 'sd-106',
-                title: 'Storm Drain Blockage & Standing Water',
-                neighborhood: 'Chula Vista (Third Ave)',
-                lat: 32.6401,
-                lng: -117.0842,
-                urgency: 4,
-                cost: 1200,
-                hours: 3,
-                votes: 9,
-                timestamp: Date.now() - 3600000 * 30,
-                description: 'Debris buildup blocking grate leading to minor curb ponding.',
-                action: 'Vactor truck clearance of leaves and sediment.',
-                image: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=600&q=80',
-                reportedBy: 'Local Merchant'
-            }
-        ];
+      <div>
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <i data-lucide="terminal" class="w-5 h-5 text-emerald-400"></i>
+          San Diego 311 / Open311 API Dispatch Stream
+        </h2>
+        <p class="text-xs text-slate-400">Structured JSON queue generated by Gemini 1.5 Flash ready for city dispatch integration.</p>
+      </div>
 
-        const PRESETS = {
-            hydrant: {
-                title: 'Burst Fire Hydrant & Water Main',
-                neighborhood: 'Gaslamp Quarter (5th Ave)',
-                lat: 32.7125,
-                lng: -117.1605,
-                urgency: 10,
-                cost: 18500,
-                hours: 24,
-                description: 'Pressurized water blowout flooding sidewalk and roadway lane.',
-                action: 'Immediate emergency shutoff of valve cluster 4B.',
-                image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=600&q=80'
-            },
-            sinkhole: {
-                title: 'Deep Asphalt Roadway Sinkhole',
-                neighborhood: 'North Park (30th St)',
-                lat: 32.7470,
-                lng: -117.1290,
-                urgency: 9,
-                cost: 11200,
-                hours: 18,
-                description: 'Collapsing road surface creating a 12-inch drop hazard.',
-                action: 'Erect barricades immediately; excavate and refill base layer.',
-                image: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'
-            },
-            sidewalk: {
-                title: 'Raised Sidewalk Root Heave',
-                neighborhood: 'Ocean Beach (Bacon St)',
-                lat: 32.7440,
-                lng: -117.2510,
-                urgency: 6,
-                cost: 2800,
-                hours: 6,
-                description: 'Tree root displacement lifted concrete slab by 3 inches.',
-                action: 'Bevel edge with concrete grinder and place caution paint.',
-                image: 'https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&w=600&q=80'
-            },
-            pothole: {
-                title: 'Deep Lane Pothole',
-                neighborhood: 'Gaslamp Quarter (Market St)',
-                lat: 32.7110,
-                lng: -117.1610,
-                urgency: 5,
-                cost: 1400,
-                hours: 4,
-                description: 'Degraded asphalt with exposed aggregate creating wheel impact shock.',
-                action: 'Schedule hot-mix asphalt patching.',
-                image: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'
-            }
+      <pre id="json-dispatch-output" class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-emerald-400 font-mono text-xs overflow-x-auto max-h-96 custom-scrollbar"></pre>
+
+      <div class="flex justify-end">
+        <button onclick="toggleDispatchModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold">
+          Close Window
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    // Initial Seed Data: Realistic San Diego Issues
+    let issues = [
+      {
+        id: "SD-2026-091",
+        hazard_type: "Burst Pipe & Road Flooding",
+        urgency_score: 10,
+        estimated_cost_usd: 24500,
+        estimated_repair_hours: 36,
+        description: "Severe main line blowout causing rapid asphalt erosion and localized sidewalk flooding near transit corridor.",
+        location_name: "Ocean Beach (Sunset Cliffs Blvd)",
+        lat: 32.7431,
+        lng: -117.2510,
+        upvotes: 42,
+        is_valid_hazard: true,
+        photo_url: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "SD-2026-084",
+        hazard_type: "Fallen Signal Head & Exposed Wire",
+        urgency_score: 9,
+        estimated_cost_usd: 4100,
+        estimated_repair_hours: 6,
+        description: "Pedestrian crosswalk signal dangling by primary electrical conduit following high wind gust.",
+        location_name: "Pacific Beach (Garnet Ave)",
+        lat: 32.8010,
+        lng: -117.2370,
+        upvotes: 35,
+        is_valid_hazard: true,
+        photo_url: "https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "SD-2026-077",
+        hazard_type: "Deep Asphalt Sinkhole",
+        urgency_score: 8,
+        estimated_cost_usd: 8500,
+        estimated_repair_hours: 14,
+        description: "Collapsing sub-base creating 14-inch deep void across primary bus lane. High risk for wheel shear.",
+        location_name: "Gaslamp Quarter (5th & Market)",
+        lat: 32.7115,
+        lng: -117.1599,
+        upvotes: 29,
+        is_valid_hazard: true,
+        photo_url: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "SD-2026-062",
+        hazard_type: "Exposed Base Light Wiring",
+        urgency_score: 7,
+        estimated_cost_usd: 1800,
+        estimated_repair_hours: 4,
+        description: "Access plate missing on historic ornamental streetlight. Live wiring accessible at waist height.",
+        location_name: "Balboa Park (El Prado)",
+        lat: 32.7341,
+        lng: -117.1446,
+        upvotes: 14,
+        is_valid_hazard: true,
+        photo_url: "https://images.unsplash.com/photo-1525896650794-60ad4ec40d0e?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "SD-2026-051",
+        hazard_type: "Raised Sidewalk Slab",
+        urgency_score: 6,
+        estimated_cost_usd: 2600,
+        estimated_repair_hours: 8,
+        description: "Tree root intrusion raised concrete slab 3.5 inches creating severe ADA compliance trip hazard.",
+        location_name: "North Park (30th & University)",
+        lat: 32.7482,
+        lng: -117.1297,
+        upvotes: 18,
+        is_valid_hazard: true,
+        photo_url: "https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&w=600&q=80"
+      }
+    ];
+
+    let map;
+    let markers = [];
+    let selectedImageBase64 = "";
+
+    // Initialize Map on Load using OpenStreetMap (No API key needed)
+    window.onload = () => {
+      lucide.createIcons();
+      initMap();
+      renderFeedAndMarkers();
+    };
+
+    function initMap() {
+      map = L.map('map').setView([32.73, -117.17], 12);
+      
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+    }
+
+    // FEATURE 1: HAVERSINE DISTANCE CALCULATOR (FOR GEOSPATIAL DEDUPLICATION)
+    function getDistanceMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // Earth radius in meters
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // Render Sidebar Cards and Map Markers
+    function renderFeedAndMarkers() {
+      const feed = document.getElementById('feed-container');
+      feed.innerHTML = "";
+
+      // Clear existing markers
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
+      let totalCost = 0;
+      let criticalCount = 0;
+
+      issues.forEach(issue => {
+        totalCost += issue.estimated_cost_usd;
+        if (issue.urgency_score >= 8) criticalCount++;
+
+        // 1. Create Feed Card
+        const card = document.createElement('div');
+        const badgeColor = issue.urgency_score >= 8 ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                           issue.urgency_score >= 5 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                           'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        
+        card.className = "bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 p-4 rounded-xl space-y-3 cursor-pointer transition";
+        card.onclick = () => focusOnIssue(issue.lat, issue.lng);
+        
+        card.innerHTML = `
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badgeColor}">
+                URGENCY ${issue.urgency_score}/10
+              </span>
+              <h3 class="font-bold text-sm text-slate-100 mt-1.5">${issue.hazard_type}</h3>
+              <p class="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                <i data-lucide="map-pin" class="w-3 h-3 text-slate-500"></i> ${issue.location_name}
+              </p>
+            </div>
+            <button onclick="upvoteIssue(event, '${issue.id}')" class="flex items-center space-x-1 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 px-2 py-1 rounded-lg text-xs text-blue-400 font-semibold transition">
+              <i data-lucide="thumbs-up" class="w-3 h-3"></i>
+              <span>${issue.upvotes}</span>
+            </button>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed line-clamp-2">${issue.description}</p>
+          <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-900/60 text-slate-400">
+            <span>Est: <strong class="text-slate-200">$${issue.estimated_cost_usd.toLocaleString()}</strong></span>
+            <span>Labor: <strong class="text-slate-200">${issue.estimated_repair_hours}h</strong></span>
+          </div>
+        `;
+        feed.appendChild(card);
+
+        // 2. Add Color-coded Map Marker
+        const markerColor = issue.urgency_score >= 8 ? '#ef4444' : issue.urgency_score >= 5 ? '#f59e0b' : '#10b981';
+        const customIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px;">${issue.urgency_score}</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        const marker = L.marker([issue.lat, issue.lng], { icon: customIcon }).addTo(map);
+        marker.bindPopup(`
+          <div class="p-1 space-y-2 max-w-xs">
+            <img src="${issue.photo_url}" class="w-full h-24 object-cover rounded-lg">
+            <h4 class="font-bold text-sm text-slate-900">${issue.hazard_type}</h4>
+            <p class="text-xs text-slate-600">${issue.description}</p>
+            <div class="text-xs font-semibold text-blue-600">Urgency: ${issue.urgency_score}/10 | Est. Repair: $${issue.estimated_cost_usd}</div>
+            <div class="text-[10px] text-slate-400">Confirmed by ${issue.upvotes} San Diego residents</div>
+          </div>
+        `);
+        markers.push(marker);
+      });
+
+      // Update Header Dashboard Stats
+      document.getElementById('stat-count').innerText = issues.length;
+      document.getElementById('stat-cost').innerText = `$${totalCost.toLocaleString()}`;
+      document.getElementById('stat-critical').innerText = criticalCount;
+      
+      lucide.createIcons();
+    }
+
+    function focusOnIssue(lat, lng) {
+      map.flyTo([lat, lng], 15, { duration: 1.5 });
+    }
+
+    function upvoteIssue(e, id) {
+      e.stopPropagation();
+      const issue = issues.find(i => i.id === id);
+      if (issue) {
+        issue.upvotes += 1;
+        renderFeedAndMarkers();
+      }
+    }
+
+    // Modal Control Functions
+    function openReportModal() { document.getElementById('report-modal').classList.remove('hidden'); }
+    function closeReportModal() { document.getElementById('report-modal').classList.add('hidden'); }
+    function toggleApiKeyInput() {
+      const container = document.getElementById('key-input-container');
+      const arrow = document.getElementById('key-arrow');
+      container.classList.toggle('hidden');
+      arrow.classList.toggle('rotate-180');
+    }
+
+    function toggleDispatchModal() {
+      const modal = document.getElementById('dispatch-modal');
+      modal.classList.toggle('hidden');
+      if (!modal.classList.contains('hidden')) {
+        const payload = issues.map(i => ({
+          dispatch_id: i.id,
+          type: i.hazard_type,
+          urgency: i.urgency_score,
+          coordinates: { latitude: i.lat, longitude: i.lng },
+          city_audit_estimate: { cost_usd: i.estimated_cost_usd, labor_hours: i.estimated_repair_hours },
+          citizen_verifications: i.upvotes,
+          status: i.urgency_score >= 8 ? "DISPATCH_EMERGENCY" : "QUEUED_ROUTINE"
+        }));
+        document.getElementById('json-dispatch-output').innerText = JSON.stringify(payload, null, 2);
+      }
+    }
+
+    // Form Handling & Gemini AI Integration
+    function previewImage(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('image-preview').src = e.target.result;
+          document.getElementById('image-preview-container').classList.remove('hidden');
+          selectedImageBase64 = e.target.result.split(',')[1];
         };
+        reader.readAsDataURL(file);
+      }
+    }
 
-        window.onload = function() {
-            initMap();
-            renderIssues();
-            updateStats();
-            document.getElementById('search-input').addEventListener('input', applyFilters);
+    function getCurrentLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          document.getElementById('lat-input').value = position.coords.latitude.toFixed(4);
+          document.getElementById('lng-input').value = position.coords.longitude.toFixed(4);
+        });
+      }
+    }
+
+    // PRESET DEMO LOADERS FOR FAILSAFE DEMONSTRATION
+    function loadPreset(type) {
+      document.getElementById('image-preview-container').classList.remove('hidden');
+      if (type === 'water') {
+        document.getElementById('image-preview').src = "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=600&q=80";
+        document.getElementById('lat-input').value = "32.7431";
+        document.getElementById('lng-input').value = "-117.2510";
+        selectedImageBase64 = "PRESET_WATER";
+      } else if (type === 'sinkhole') {
+        document.getElementById('image-preview').src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80";
+        document.getElementById('lat-input').value = "32.7115";
+        document.getElementById('lng-input').value = "-117.1599";
+        selectedImageBase64 = "PRESET_SINKHOLE";
+      } else if (type === 'troll') {
+        document.getElementById('image-preview').src = "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=600&q=80"; // Cat picture
+        document.getElementById('lat-input').value = "32.7157";
+        document.getElementById('lng-input').value = "-117.1611";
+        selectedImageBase64 = "PRESET_TROLL";
+      } else if (type === 'duplicate') {
+        document.getElementById('image-preview').src = "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=600&q=80";
+        document.getElementById('lat-input').value = "32.7432"; // 10 meters away from existing Ocean Beach burst pipe
+        document.getElementById('lng-input').value = "-117.2511";
+        selectedImageBase64 = "PRESET_WATER";
+      }
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.innerHTML = `<span>Analyzing with Gemini AI...</span>`;
+      submitBtn.disabled = true;
+
+      const apiKey = document.getElementById('gemini-api-key').value.trim();
+      const lat = parseFloat(document.getElementById('lat-input').value);
+      const lng = parseFloat(document.getElementById('lng-input').value);
+
+      let aiResult = null;
+
+      // Real Gemini API Call OR Failsafe Fallback
+      if (apiKey && selectedImageBase64 && !selectedImageBase64.startsWith("PRESET")) {
+        try {
+          aiResult = await callGeminiApi(apiKey, selectedImageBase64);
+        } catch (err) {
+          console.error("Gemini API Error:", err);
+          alert("API key error or rate limit. Falling back to local verification rules.");
+          aiResult = getFallbackResult(selectedImageBase64);
+        }
+      } else {
+        // Fallback simulation
+        await new Promise(r => setTimeout(r, 1200));
+        aiResult = getFallbackResult(selectedImageBase64);
+      }
+
+      submitBtn.innerHTML = `<span>Run Gemini Vision Audit & Publish</span>`;
+      submitBtn.disabled = false;
+
+      // FEATURE 2: TROLL / SPAM REJECTION CHECK
+      if (!aiResult.is_valid_hazard) {
+        alert(`🚨 SUBMISSION REJECTED BY AI GATEKEEPER:\n\n${aiResult.rejection_reason}`);
+        closeReportModal();
+        return;
+      }
+
+      // FEATURE 3: GEOSPATIAL DEDUPLICATION CHECK (30 Meters Radius)
+      const DUPLICATE_RADIUS_METERS = 30;
+      const duplicate = issues.find(existing => 
+        existing.hazard_type === aiResult.hazard_type &&
+        getDistanceMeters(existing.lat, existing.lng, lat, lng) <= DUPLICATE_RADIUS_METERS
+      );
+
+      if (duplicate) {
+        duplicate.upvotes += 1;
+        alert(`🔄 DUPLICATE REPORT DETECTED:\nAn issue for '${aiResult.hazard_type}' is already recorded within 30 meters.\n\nYour submission was merged into Report #${duplicate.id} (Upvotes updated to ${duplicate.upvotes}).`);
+        closeReportModal();
+        renderFeedAndMarkers();
+        focusOnIssue(duplicate.lat, duplicate.lng);
+        return;
+      }
+
+      // Create brand-new issue pin if valid & non-duplicate
+      const newIssue = {
+        id: `SD-2026-0${Math.floor(100 + Math.random() * 900)}`,
+        hazard_type: aiResult.hazard_type,
+        urgency_score: aiResult.urgency_score,
+        estimated_cost_usd: aiResult.estimated_cost_usd,
+        estimated_repair_hours: aiResult.estimated_repair_hours,
+        description: aiResult.description,
+        location_name: `San Diego (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
+        lat: lat,
+        lng: lng,
+        upvotes: 1,
+        is_valid_hazard: true,
+        photo_url: document.getElementById('image-preview').src || "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=600&q=80"
+      };
+
+      issues.unshift(newIssue);
+      closeReportModal();
+      renderFeedAndMarkers();
+      focusOnIssue(lat, lng);
+    }
+
+    // API CALL WITH HARDENED SYSTEM PROMPT FOR TROLL REJECTION
+    async function callGeminiApi(key, base64Image) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+      
+      const prompt = `
+        Analyze this image. You are an automated civic public works auditor for San Diego.
+        
+        FIRST, determine if this image contains legitimate municipal infrastructure or public safety hazards 
+        (e.g., potholes, broken sidewalks, exposed wiring, burst water pipes, downed trees, damaged street lights, graffiti). 
+
+        If the image is a selfie, meme, pet, animal, indoor object, text screenshot, or non-infrastructure item, 
+        you MUST classify it as INVALID.
+
+        Respond strictly in valid JSON with no markdown formatting:
+        {
+          "is_valid_hazard": boolean,
+          "rejection_reason": "string (e.g. 'Image appears to be a pet/meme and does not contain public infrastructure' if false, else null)",
+          "hazard_type": "string (e.g. Broken Sidewalk, Burst Pipe, Damaged Streetlight)",
+          "urgency_score": number (1 to 10),
+          "estimated_cost_usd": number,
+          "estimated_repair_hours": number,
+          "description": "string (brief summary of safety risk)"
+        }
+      `;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+            ]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      const rawText = data.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+      return JSON.parse(rawText);
+    }
+
+    // Failsafe Local Fallback Simulation Logic
+    function getFallbackResult(type) {
+      if (type === "PRESET_TROLL") {
+        return {
+          is_valid_hazard: false,
+          rejection_reason: "Image classified as a pet/cat meme. No public infrastructure or civic hazard detected.",
+          hazard_type: "Invalid",
+          urgency_score: 0,
+          estimated_cost_usd: 0,
+          estimated_repair_hours: 0,
+          description: "Rejected upload."
         };
+      } else if (type === "PRESET_SINKHOLE") {
+        return {
+          is_valid_hazard: true,
+          rejection_reason: null,
+          hazard_type: "Deep Asphalt Sinkhole",
+          urgency_score: 8,
+          estimated_cost_usd: 8500,
+          estimated_repair_hours: 14,
+          description: "Sub-grade failure creating deep wheel hazard across transit lane."
+        };
+      } else {
+        return {
+          is_valid_hazard: true,
+          rejection_reason: null,
+          hazard_type: "Burst Pipe & Road Flooding",
+          urgency_score: 10,
+          estimated_cost_usd: 24500,
+          estimated_repair_hours: 36,
+          description: "High-pressure municipal main line blowout causing rapid soil erosion and roadway inundation."
+        };
+      }
+    }
 
-        function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([32.7250, -117.1600], 12);
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
-            L.control.zoom({ position: 'topright' }).addTo(map);
-        }
+    function filterFeed() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const urgency = document.getElementById('urgency-filter').value;
 
-        function getUrgencyBadge(urgency) {
-            if (urgency >= 8) {
-                return `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> 🔴 CRITICAL (${urgency}/10)
-                        </span>`;
-            } else if (urgency >= 5) {
-                return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                            🟡 MODERATE (${urgency}/10)
-                        </span>`;
-            } else {
-                return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            🟢 MINOR (${urgency}/10)
-                        </span>`;
-            }
-        }
+      const filtered = issues.filter(i => {
+        const matchesSearch = i.hazard_type.toLowerCase().includes(search) || i.location_name.toLowerCase().includes(search);
+        const matchesUrgency = urgency === 'all' ? true :
+                               urgency === 'critical' ? i.urgency_score >= 8 :
+                               urgency === 'moderate' ? (i.urgency_score >= 5 && i.urgency_score <= 7) :
+                               i.urgency_score <= 4;
+        return matchesSearch && matchesUrgency;
+      });
 
-        function getMarkerIcon(urgency) {
-            let color = urgency >= 8 ? '#ef4444' : (urgency >= 5 ? '#f59e0b' : '#10b981');
-            let pulseClass = urgency >= 8 ? 'pulse-red' : '';
-            return L.divIcon({
-                className: 'custom-map-pin',
-                html: `
-                    <div class="relative flex items-center justify-center">
-                        <div class="w-8 h-8 rounded-full ${pulseClass} flex items-center justify-center text-white font-bold text-xs shadow-lg border-2 border-white" style="background-color: ${color}">
-                            ${urgency}
-                        </div>
-                    </div>
-                `,
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
-            });
-        }
-
-        function renderIssues() {
-            Object.values(markers).forEach(m => map.removeLayer(m));
-            markers = {};
-            const listContainer = document.getElementById('issue-list');
-            listContainer.innerHTML = '';
-
-            let filtered = issues.filter(issue => {
-                const search = document.getElementById('search-input').value.toLowerCase();
-                const matchesSearch = issue.title.toLowerCase().includes(search) || 
-                                     issue.neighborhood.toLowerCase().includes(search) ||
-                                     issue.description.toLowerCase().includes(search);
-                if (currentFilter === 'critical') return matchesSearch && issue.urgency >= 8;
-                if (currentFilter === 'high') return matchesSearch && issue.urgency >= 5 && issue.urgency < 8;
-                if (currentFilter === 'low') return matchesSearch && issue.urgency < 5;
-                return matchesSearch;
-            });
-
-            if (currentSort === 'urgency') filtered.sort((a, b) => b.urgency - a.urgency);
-            else if (currentSort === 'votes') filtered.sort((a, b) => b.votes - a.votes);
-            else if (currentSort === 'recent') filtered.sort((a, b) => b.timestamp - a.timestamp);
-
-            if (filtered.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="text-center py-10 text-slate-500 space-y-2">
-                        <i class="fa-solid fa-clipboard-check text-3xl"></i>
-                        <p class="text-xs">No hazard reports match your filter.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            filtered.forEach(issue => {
-                const marker = L.marker([issue.lat, issue.lng], { icon: getMarkerIcon(issue.urgency) })
-                    .addTo(map)
-                    .bindPopup(`
-                        <div class="custom-popup">
-                            <div class="relative h-32 w-full overflow-hidden">
-                                <img src="${issue.image}" class="w-full h-full object-cover">
-                                <div class="absolute top-2 right-2">${getUrgencyBadge(issue.urgency)}</div>
-                            </div>
-                            <div class="p-3 space-y-2 bg-slate-900 text-slate-100">
-                                <h4 class="font-bold text-xs text-white leading-tight">${issue.title}</h4>
-                                <p class="text-[10px] text-slate-400 flex items-center gap-1">
-                                    <i class="fa-solid fa-location-dot text-sky-400"></i> ${issue.neighborhood}
-                                </p>
-                                <div class="grid grid-cols-2 gap-2 text-[10px] bg-slate-950 p-2 rounded-lg border border-slate-800">
-                                    <div>
-                                        <span class="text-slate-500 block">Est. Repair</span>
-                                        <span class="font-bold text-sky-400">$${issue.cost.toLocaleString()}</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-slate-500 block">Labor Time</span>
-                                        <span class="font-bold text-slate-200">${issue.hours} hrs</span>
-                                    </div>
-                                </div>
-                                <div class="pt-1 flex items-center justify-between">
-                                    <button onclick="upvoteIssue('${issue.id}')" class="w-full py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-lg transition flex items-center justify-center gap-1.5">
-                                        <i class="fa-solid fa-thumbs-up"></i> Upvote Priority (${issue.votes})
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `, { className: 'custom-popup' });
-
-                markers[issue.id] = marker;
-
-                const card = document.createElement('div');
-                card.className = "pt-3 first:pt-0 cursor-pointer group";
-                card.onclick = () => focusMapLocation(issue.id, issue.lat, issue.lng);
-
-                card.innerHTML = `
-                    <div class="bg-slate-900 border border-slate-800 hover:border-sky-500/50 rounded-xl p-3 space-y-2 transition shadow-md">
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="space-y-0.5">
-                                <h4 class="font-bold text-xs text-slate-100 group-hover:text-sky-400 transition">${issue.title}</h4>
-                                <p class="text-[11px] text-slate-400 flex items-center gap-1">
-                                    <i class="fa-solid fa-location-dot text-sky-400"></i> ${issue.neighborhood}
-                                </p>
-                            </div>
-                            ${getUrgencyBadge(issue.urgency)}
-                        </div>
-                        <p class="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">${issue.description}</p>
-                        <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-[11px]">
-                            <div class="flex items-center gap-3 text-slate-400">
-                                <span class="font-semibold text-sky-400">$${issue.cost.toLocaleString()}</span>
-                                <span>•</span>
-                                <span>${issue.hours}h Repair</span>
-                            </div>
-                            <button onclick="event.stopPropagation(); upvoteIssue('${issue.id}')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-[10px] font-semibold flex items-center gap-1.5 transition">
-                                <i class="fa-solid fa-thumbs-up text-sky-400"></i>
-                                <span>${issue.votes}</span>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                listContainer.appendChild(card);
-            });
-        }
-
-        function focusMapLocation(id, lat, lng) {
-            map.flyTo([lat, lng], 15, { duration: 1.2 });
-            if (markers[id]) markers[id].openPopup();
-            if (window.innerWidth < 768) toggleMobileView('map');
-        }
-
-        function upvoteIssue(id) {
-            const issue = issues.find(i => i.id === id);
-            if (issue) {
-                issue.votes++;
-                renderIssues();
-                updateStats();
-            }
-        }
-
-        function updateStats() {
-            const totalCost = issues.reduce((acc, curr) => acc + curr.cost, 0);
-            const criticalCount = issues.filter(i => i.urgency >= 8).length;
-
-            document.getElementById('stat-total-issues').textContent = issues.length;
-            document.getElementById('stat-total-cost').textContent = '$' + totalCost.toLocaleString();
-            document.getElementById('stat-critical-count').textContent = criticalCount;
-
-            document.getElementById('stat-mobile-reports').textContent = issues.length;
-            document.getElementById('stat-mobile-cost').textContent = '$' + (totalCost / 1000).toFixed(1) + 'k';
-            document.getElementById('stat-mobile-critical').textContent = criticalCount;
-        }
-
-        function applyFilters() {
-            currentFilter = document.getElementById('filter-urgency').value;
-            renderIssues();
-        }
-
-        function setSort(type) {
-            currentSort = type;
-            ['urgency', 'votes', 'recent'].forEach(t => {
-                const btn = document.getElementById(`sort-${t}`);
-                btn.className = (t === type)
-                    ? "px-2.5 py-1 rounded-md bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[11px] font-medium shrink-0"
-                    : "px-2.5 py-1 rounded-md bg-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-medium shrink-0";
-            });
-            renderIssues();
-        }
-
-        function openReportModal() { document.getElementById('report-modal').classList.remove('hidden'); }
-        function closeReportModal() { document.getElementById('report-modal').classList.add('hidden'); }
-
-        function toggleApiKeyInput() {
-            document.getElementById('api-key-wrapper').classList.toggle('hidden');
-            document.getElementById('api-key-chevron').classList.toggle('rotate-180');
-        }
-
-        function toggleDispatchModal() {
-            const modal = document.getElementById('dispatch-modal');
-            if (modal.classList.contains('hidden')) {
-                const payload = {
-                    dispatch_system: "San_Diego_Public_Works_311",
-                    generated_at: new Date().toISOString(),
-                    active_incidents_count: issues.length,
-                    total_backlog_estimate_usd: issues.reduce((a, b) => a + b.cost, 0),
-                    critical_priority_queue: issues.filter(i => i.urgency >= 8).map(i => ({
-                        incident_id: i.id,
-                        hazard_type: i.title,
-                        urgency_score: i.urgency,
-                        coordinates: { lat: i.lat, lng: i.lng },
-                        estimated_labor_hours: i.hours,
-                        community_upvotes: i.votes
-                    }))
-                };
-                document.getElementById('json-dispatch-preview').textContent = JSON.stringify(payload, null, 2);
-                modal.classList.remove('hidden');
-            } else {
-                modal.classList.add('hidden');
-            }
-        }
-
-        function copyDispatchJSON() {
-            navigator.clipboard.writeText(document.getElementById('json-dispatch-preview').textContent).then(() => {
-                alert('San Diego 311 Dispatch JSON payload copied to clipboard!');
-            });
-        }
-
-        function detectGPS() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        currentLat = pos.coords.latitude;
-                        currentLng = pos.coords.longitude;
-                        document.getElementById('coords-display').textContent = `${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`;
-                        document.getElementById('location-input').value = `Detected GPS (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`;
-                    },
-                    () => {
-                        currentLat = 32.7115;
-                        currentLng = -117.1599;
-                        document.getElementById('coords-display').textContent = `${currentLat}, ${currentLng} (SD Gaslamp)`;
-                    }
-                );
-            }
-        }
-
-        function loadPreset(key) {
-            const preset = PRESETS[key];
-            if (!preset) return;
-            document.getElementById('location-input').value = preset.neighborhood;
-            currentLat = preset.lat;
-            currentLng = preset.lng;
-            document.getElementById('coords-display').textContent = `${preset.lat}, ${preset.lng}`;
-            document.getElementById('image-preview').src = preset.image;
-            document.getElementById('upload-placeholder').classList.add('hidden');
-            document.getElementById('image-preview-wrapper').classList.remove('hidden');
-            selectedBase64Image = preset.image;
-        }
-
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                selectedBase64Image = e.target.result;
-                document.getElementById('image-preview').src = selectedBase64Image;
-                document.getElementById('upload-placeholder').classList.add('hidden');
-                document.getElementById('image-preview-wrapper').classList.remove('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function resetImage(e) {
-            e.stopPropagation();
-            selectedBase64Image = null;
-            document.getElementById('file-input').value = '';
-            document.getElementById('upload-placeholder').classList.remove('hidden');
-            document.getElementById('image-preview-wrapper').classList.add('hidden');
-        }
-
-        async function processAndSubmitReport() {
-            if (!selectedBase64Image) {
-                selectedBase64Image = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80';
-            }
-            const apiKey = document.getElementById('gemini-api-key').value.trim();
-            const locationName = document.getElementById('location-input').value || 'San Diego, CA';
-
-            closeReportModal();
-            document.getElementById('ai-loading-overlay').classList.remove('hidden');
-
-            let aiResult = null;
-            if (apiKey) {
-                try {
-                    document.getElementById('ai-loading-status').textContent = "Querying Gemini 1.5 Flash Vision Model...";
-                    aiResult = await callGeminiVisionAPI(apiKey, selectedBase64Image);
-                } catch (err) {
-                    console.warn("Gemini API call failed, using Smart AI Simulation Engine:", err);
-                    aiResult = generateSmartSimulationResult();
-                }
-            } else {
-                await new Promise(r => setTimeout(r, 1500));
-                aiResult = generateSmartSimulationResult();
-            }
-
-            document.getElementById('ai-loading-overlay').classList.add('hidden');
-
-            const newIssue = {
-                id: 'sd-' + Math.floor(100 + Math.random() * 900),
-                title: aiResult.hazard_type || 'Civic Infrastructure Hazard',
-                neighborhood: locationName,
-                lat: currentLat,
-                lng: currentLng,
-                urgency: aiResult.urgency_score || 7,
-                cost: aiResult.estimated_cost_usd || 4500,
-                hours: aiResult.estimated_repair_hours || 8,
-                votes: 1,
-                timestamp: Date.now(),
-                description: aiResult.description || 'Hazard detected requiring municipal public works repair.',
-                action: aiResult.recommended_action || 'Inspect and issue work order.',
-                image: selectedBase64Image,
-                reportedBy: 'Citizen Scout (AI Verified)'
-            };
-
-            issues.unshift(newIssue);
-            renderIssues();
-            updateStats();
-            focusMapLocation(newIssue.id, newIssue.lat, newIssue.lng);
-        }
-
-        async function callGeminiVisionAPI(apiKey, base64Data) {
-            const cleanBase64 = base64Data.split(',')[1] || base64Data;
-            const prompt = `
-            Analyze this municipal infrastructure image. You are an expert public works auditor for San Diego.
-            Respond ONLY in valid JSON matching this exact schema:
-            {
-              "hazard_type": "string (short clear hazard title)",
-              "urgency_score": number (1 to 10),
-              "estimated_cost_usd": number (realistic municipal repair cost estimate),
-              "estimated_repair_hours": number (estimated labor hours),
-              "description": "string (1-2 sentence risk analysis)",
-              "recommended_action": "string (immediate dispatch recommendation)"
-            }
-            `;
-
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            { inlineData: { mimeType: "image/jpeg", data: cleanBase64 } }
-                        ]
-                    }],
-                    generationConfig: { responseMimeType: "application/json" }
-                })
-            });
-
-            const data = await response.json();
-            return JSON.parse(data.candidates[0].content.parts[0].text);
-        }
-
-        function generateSmartSimulationResult() {
-            const types = [
-                { type: 'Exposed High-Voltage Wire', urgency: 9, cost: 3400, hours: 6, desc: 'Energized electrical wiring exposed near pedestrian walkway.', action: 'Deploy emergency electrical repair team.' },
-                { type: 'Main Street Asphalt Hole', urgency: 8, cost: 9200, hours: 16, desc: 'Sub-surface road erosion creating a deep vehicle wheel pit.', action: 'Saw-cut and apply hot mix compaction asphalt.' },
-                { type: 'Broken Water Main Line', urgency: 10, cost: 16800, hours: 24, desc: 'High pressure water discharge eroding curb and asphalt layer.', action: 'Emergency shut off valve isolation.' }
-            ];
-            const pick = types[Math.floor(Math.random() * types.length)];
-            return {
-                hazard_type: pick.type,
-                urgency_score: pick.urgency,
-                estimated_cost_usd: pick.cost,
-                estimated_repair_hours: pick.hours,
-                description: pick.desc,
-                recommended_action: pick.action
-            };
-        }
-
-        function toggleMobileView(view) {
-            const aside = document.querySelector('aside');
-            const main = document.querySelector('main');
-            const btnMap = document.getElementById('btn-mobile-map');
-            const btnList = document.getElementById('btn-mobile-list');
-
-            if (view === 'map') {
-                aside.classList.add('hidden');
-                aside.classList.remove('flex');
-                main.classList.remove('hidden');
-                btnMap.className = "px-4 py-1.5 rounded-full bg-sky-500 text-slate-950 font-bold";
-                btnList.className = "px-4 py-1.5 rounded-full text-slate-300 font-medium";
-            } else {
-                aside.classList.remove('hidden');
-                aside.classList.add('flex');
-                main.classList.add('hidden');
-                btnList.className = "px-4 py-1.5 rounded-full bg-sky-500 text-slate-950 font-bold";
-                btnMap.className = "px-4 py-1.5 rounded-full text-slate-300 font-medium";
-            }
-        }
-    </script>
+      // Simple re-render of feed list based on filter
+      const feed = document.getElementById('feed-container');
+      feed.innerHTML = "";
+      filtered.forEach(issue => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-2 cursor-pointer";
+        card.onclick = () => focusOnIssue(issue.lat, issue.lng);
+        card.innerHTML = `<h3 class="font-bold text-sm text-slate-100">${issue.hazard_type}</h3><p class="text-xs text-slate-400">${issue.location_name}</p>`;
+        feed.appendChild(card);
+      });
+    }
+  </script>
 </body>
 </html>
